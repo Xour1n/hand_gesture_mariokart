@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mario Kart Deluxe - Rainbow Road Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Arcade & Mario Style -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- TensorFlow & Teachable Machine Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <!-- Firebase SDK (v9 Compatibility Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        marioRed: '#c8102e',
+                        marioDarkRed: '#7a0010',
+                        marioDark: '#0a0a0c',
+                        marioCard: '#120a0d',
+                        marioYellow: '#fcd116'
+                    },
+                    fontFamily: {
+                        arcade: ['"Press Start 2P"', 'cursive']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .active-btn {
+            background-color: #ffffff !important;
+            color: #c8102e !important;
+            box-shadow: 0 0 14px #c8102e, inset 0 0 6px #ffffff !important;
+            border-color: #c8102e !important;
+        }
+
+        /* Background Luar Angkasa Gelap */
+        body {
+            background-color: #030208;
+            background-image: radial-gradient(circle at 50% 50%, #0d061c 0%, #030208 100%);
+            perspective: 1500px;
+        }
+
+        /* ===== RAINBOW ROAD TRACK BACKGROUND (N64 STYLE) ===== */
+        .rainbow-space-container {
+            position: fixed;
+            inset: 0;
+            pointer-events: none !important;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .rainbow-track-loop {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 140vw;
+            height: 70vw;
+            max-width: 1600px;
+            max-height: 900px;
+            border-radius: 50%;
+            border: 55px solid transparent;
+            background: linear-gradient(90deg, #ff0055, #ffaa00, #ffff00, #00ff66, #00ffff, #0066ff, #aa00ff, #ff0055) border-box;
+            mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            transform: translate(-50%, -50%) rotateX(65deg) rotateZ(-25deg);
+            filter: drop-shadow(0 0 35px rgba(0, 255, 255, 0.75)) drop-shadow(0 0 15px rgba(255, 0, 255, 0.6));
+            animation: rotateTrack 40s linear infinite;
+        }
+
+        .rainbow-track-bg-ribbon {
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 100vw;
+            height: 40vw;
+            border-radius: 50%;
+            border: 25px solid transparent;
+            background: linear-gradient(90deg, #00ffff, #00ff66, #ffff00, #ff7700, #ff0055, #aa00ff) border-box;
+            mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            transform: rotateX(50deg) rotateZ(35deg);
+            filter: drop-shadow(0 0 20px rgba(255, 255, 0, 0.5));
+            opacity: 0.6;
+        }
+
+        @keyframes rotateTrack {
+            0% { transform: translate(-50%, -50%) rotateX(65deg) rotateZ(-25deg); }
+            100% { transform: translate(-50%, -50%) rotateX(65deg) rotateZ(335deg); }
+        }
+
+        @keyframes spin3DGaban {
+            0% { transform: translateY(-50%) rotateY(0deg) rotateX(10deg); }
+            50% { transform: translateY(-50%) rotateY(180deg) rotateX(-10deg) scale(1.05); }
+            100% { transform: translateY(-50%) rotateY(360deg) rotateX(10deg); }
+        }
+
+        .star-giant-bg {
+            position: fixed;
+            top: 50%;
+            pointer-events: none !important;
+            z-index: 2;
+            transform-style: preserve-3d;
+            filter: drop-shadow(0 0 40px rgba(252, 209, 22, 0.85));
+            opacity: 0.9;
+        }
+
+        .star-giant-left {
+            left: -6vw;
+            width: clamp(300px, 32vw, 520px);
+            animation: spin3DGaban 8s infinite linear;
+        }
+
+        .star-giant-right {
+            right: -6vw;
+            width: clamp(300px, 32vw, 520px);
+            animation: spin3DGaban 9s infinite linear reverse;
+        }
+
+        @keyframes rainbowShootingStar {
+            0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; width: 0px; }
+            40% { width: 140px; opacity: 1; }
+            100% { transform: translateX(-600px) translateY(600px) rotate(-45deg); opacity: 0; width: 0px; }
+        }
+        .shooting-star-rainbow {
+            position: fixed;
+            height: 2px;
+            background: linear-gradient(-45deg, #ffffff, #ff0055, #ff00ff, #00ffff, #00ff00, #ffff00, transparent);
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9));
+            pointer-events: none;
+            z-index: 3;
+            will-change: transform, opacity, width;
+        }
+
+        @keyframes moveRainbowHorizontal {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 200% 0%; }
+        }
+
+        @keyframes moveRainbowVertical {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 0% 200%; }
+        }
+
+        @keyframes waveMotionHoriz {
+            0%, 100% { transform: scaleY(1) translateY(0px); }
+            50% { transform: scaleY(1.2) translateY(2px); }
+        }
+
+        @keyframes waveMotionVert {
+            0%, 100% { transform: scaleX(1) translateX(0px); }
+            50% { transform: scaleX(1.2) translateX(2px); }
+        }
+
+        .rainbow-border-top {
+            position: fixed;
+            top: 0; left: 0; right: 0; height: 14px;
+            background: linear-gradient(90deg, #ff0055, #ff7700, #ffff00, #00ff66, #00ffff, #aa00ff, #ff0055);
+            background-size: 200% 100%;
+            clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 90% 100%, 80% 65%, 70% 100%, 60% 60%, 50% 100%, 40% 65%, 30% 100%, 20% 60%, 10% 100%, 0% 70%);
+            animation: moveRainbowHorizontal 3s linear infinite, waveMotionHoriz 2s ease-in-out infinite;
+            filter: drop-shadow(0 2px 8px rgba(255, 0, 128, 0.8));
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .rainbow-border-bottom {
+            position: fixed;
+            bottom: 0; left: 0; right: 0; height: 14px;
+            background: linear-gradient(90deg, #aa00ff, #00ffff, #00ff66, #ffff00, #ff7700, #ff0055, #aa00ff);
+            background-size: 200% 100%;
+            clip-path: polygon(0% 30%, 10% 0%, 20% 40%, 30% 0%, 40% 35%, 50% 0%, 60% 40%, 70% 0%, 80% 35%, 90% 0%, 100% 30%, 100% 100%, 0% 100%);
+            animation: moveRainbowHorizontal 3s linear infinite reverse, waveMotionHoriz 2.4s ease-in-out infinite alternate;
+            filter: drop-shadow(0 -2px 8px rgba(0, 255, 255, 0.8));
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .rainbow-border-left {
+            position: fixed;
+            top: 0; bottom: 0; left: 0; width: 14px;
+            background: linear-gradient(180deg, #ff0055, #ff7700, #ffff00, #00ff66, #00ffff, #aa00ff, #ff0055);
+            background-size: 100% 200%;
+            clip-path: polygon(0% 0%, 70% 0%, 100% 10%, 65% 20%, 100% 30%, 60% 40%, 100% 50%, 65% 60%, 100% 70%, 60% 80%, 100% 90%, 70% 100%, 0% 100%);
+            animation: moveRainbowVertical 3.5s linear infinite, waveMotionVert 2.2s ease-in-out infinite;
+            filter: drop-shadow(2px 0 8px rgba(255, 255, 0, 0.8));
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .rainbow-border-right {
+            position: fixed;
+            top: 0; bottom: 0; right: 0; width: 14px;
+            background: linear-gradient(180deg, #aa00ff, #00ffff, #00ff66, #ffff00, #ff7700, #ff0055, #aa00ff);
+            background-size: 100% 200%;
+            clip-path: polygon(30% 0%, 100% 0%, 100% 100%, 30% 100%, 0% 90%, 40% 80%, 0% 70%, 35% 60%, 0% 50%, 40% 40%, 0% 30%, 35% 20%, 0% 10%);
+            animation: moveRainbowVertical 3.5s linear infinite reverse, waveMotionVert 2.6s ease-in-out infinite alternate;
+            filter: drop-shadow(-2px 0 8px rgba(0, 255, 100, 0.8));
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        @keyframes starTwinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 8px #fcd116); }
+        }
+        .star-sparkle {
+            position: absolute;
+            color: #fcd116;
+            animation: starTwinkle 2.2s infinite ease-in-out;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        @keyframes floatLakitu {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: floatLakitu 3s ease-in-out infinite;
+        }
+
+        @keyframes floatMushroom {
+            0%, 100% { transform: translateY(0px) rotate(-3deg); }
+            50% { transform: translateY(-5px) rotate(3deg); }
+        }
+        .animate-mushroom {
+            animation: floatMushroom 2.5s ease-in-out infinite;
+        }
+
+        @keyframes boxGlow {
+            0%, 100% { filter: drop-shadow(0 0 6px #c8102e); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 12px #c8102e); transform: scale(1.03); }
+        }
+        .animate-box-glow {
+            animation: boxGlow 2.2s infinite ease-in-out;
+        }
+
+        .steering-wheel-container {
+            transition: transform 0.2s ease-out;
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        .steer-left { transform: rotate(-28deg) scale(1.02); }
+        .steer-right { transform: rotate(28deg) scale(1.02); }
+        .steer-up { transform: translateY(-6px) scale(1.02); }
+
+        .racing-wheel-outer {
+            background: radial-gradient(circle, #2b0306 0%, #110203 70%, #000000 100%);
+            border: 8px solid #1a1a1a;
+            outline: 3px solid #c8102e;
+            box-shadow: 0 0 18px rgba(200, 16, 46, 0.4), inset 0 0 10px #000000;
+        }
+
+        .wheel-spoke-left, .wheel-spoke-right, .wheel-spoke-bottom {
+            position: absolute;
+            background: #111;
+            border: 1px solid #c8102e;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .wheel-spoke-left { width: 35%; height: 12px; left: 0; top: 50%; transform: translateY(-50%); }
+        .wheel-spoke-right { width: 35%; height: 12px; right: 0; top: 50%; transform: translateY(-50%); }
+        .wheel-spoke-bottom { width: 12px; height: 35%; bottom: 0; left: 50%; transform: translateX(-50%); }
+    </style>
+</head>
+<body class="text-white min-h-screen font-arcade flex flex-col justify-between selection:bg-marioRed selection:text-white relative overflow-x-hidden p-6 sm:p-8">
+
+    <div class="rainbow-space-container">
+        <div class="rainbow-track-bg-ribbon"></div>
+        <div class="rainbow-track-loop"></div>
+    </div>
+
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/34/Super_Mario_Star.svg" alt="Giant Mario Star Left" class="star-giant-bg star-giant-left hidden md:block">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/34/Super_Mario_Star.svg" alt="Giant Mario Star Right" class="star-giant-bg star-giant-right hidden md:block">
+
+    <div class="rainbow-border-top"></div>
+    <div class="rainbow-border-bottom"></div>
+    <div class="rainbow-border-left"></div>
+    <div class="rainbow-border-right"></div>
+
+    <div class="shooting-star-rainbow" style="top: 4%; right: 8%; animation: rainbowShootingStar 2.8s linear infinite 0.1s;"></div>
+    <div class="shooting-star-rainbow" style="top: 18%; right: 45%; animation: rainbowShootingStar 3.1s linear infinite 0.5s;"></div>
+    <div class="shooting-star-rainbow" style="top: 50%; right: 25%; animation: rainbowShootingStar 2.9s linear infinite 0.4s;"></div>
+
+    <i class="fas fa-star star-sparkle text-[10px] top-8 left-12"></i>
+    <i class="fas fa-star star-sparkle text-xs top-16 right-1/4"></i>
+    <i class="fas fa-star star-sparkle text-[10px] bottom-16 left-1/4"></i>
+
+    <img src="Group 11 (4)_3.png" alt="Mini Mushroom Left" class="fixed bottom-6 left-6 w-10 sm:w-12 h-auto pointer-events-none z-40 animate-mushroom drop-shadow-[0_0_8px_rgba(200,16,46,0.8)]">
+    <img src="Group 11 (4)_3.png" alt="Mini Mushroom Right" class="fixed top-16 right-6 w-9 sm:w-11 h-auto pointer-events-none z-40 animate-mushroom drop-shadow-[0_0_8px_rgba(200,16,46,0.8)]" style="animation-delay: 1s;">
+
+    <div class="w-full max-w-5xl mx-auto space-y-4 relative z-20 my-auto">
+        
+        <header class="w-full bg-marioRed/95 rounded-2xl px-5 py-3 border-3 border-black shadow-[5px_5px_0px_#000] flex flex-col sm:flex-row justify-between items-center gap-3 relative overflow-hidden backdrop-blur-md">
+            <i class="fas fa-star text-marioYellow text-sm absolute -top-1 -right-1"></i>
+            
+            <div class="flex items-center gap-3 text-center sm:text-left z-10">
+                <img src="Adobe Express - file.png" alt="Mario Kart 8 Deluxe" class="h-10 sm:h-12 object-contain drop-shadow-[2px_2px_0px_#000]">
+                <div>
+                    <h1 class="text-sm lg:text-base font-black text-white tracking-wider drop-shadow-[1px_1px_0px_#000] uppercase flex items-center gap-2">
+                        ROBOT CONTROLLER <i class="fas fa-star text-marioYellow text-[9px] animate-bounce"></i>
+                    </h1>
+                    <p class="text-black text-[8px] font-sans font-bold uppercase tracking-widest">
+                        Rainbow Road Edition
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap z-10">
+                <div id="mode-badge" class="px-3 py-1.5 rounded-lg bg-black border border-marioRed text-[8px] font-bold text-white tracking-wider uppercase shadow-[2px_2px_0px_#000]">
+                    Mode: Responsive Steering
+                </div>
+
+                <button onclick="toggleModal(true)" class="p-2 bg-black hover:bg-gray-900 text-marioRed rounded-lg border border-white shadow-[2px_2px_0px_#000] transition active:scale-95 text-xs" title="Pengaturan Firebase">
+                    <i class="fas fa-fire"></i>
+                </button>
+
+                <button id="btn-connect" onclick="connectBluetooth()" class="px-3 py-1.5 bg-black hover:bg-gray-900 text-white rounded-lg font-bold text-[8px] border border-marioRed shadow-[2px_2px_0px_#000] transition active:scale-95 flex items-center gap-1.5">
+                    <i class="fab fa-bluetooth-b text-xs text-marioRed"></i>
+                    <span id="ble-btn-text">Micro:bit</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="w-full flex justify-center -my-2 z-30">
+            <img src="Lakitu_3.png" alt="Lakitu Referee" class="w-20 sm:w-24 drop-shadow-[0_4px_8px_rgba(200,16,46,0.4)] animate-float">
+        </div>
+
+        <main class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 relative z-20">
+            <section class="bg-marioCard/95 rounded-2xl p-4 lg:p-5 border-3 border-marioRed shadow-[5px_5px_0px_#000] flex flex-col items-center justify-between relative overflow-hidden backdrop-blur-md">
+                <div class="w-full flex justify-between items-center mb-2">
+                    <h2 class="text-[10px] font-bold text-white flex items-center gap-1.5 tracking-wide">
+                        <i class="fas fa-steering-wheel text-marioRed"></i> Mario Steering
+                    </h2>
+                    <span class="text-[8px] text-gray-400 font-sans font-semibold">Rotasi Real-time</span>
+                </div>
+
+                <div id="steering-wheel" class="steering-wheel-container racing-wheel-outer relative w-56 h-56 sm:w-64 sm:h-64 rounded-full flex items-center justify-center p-3 my-2">
+                    <div class="wheel-spoke-left"></div>
+                    <div class="wheel-spoke-right"></div>
+                    <div class="wheel-spoke-bottom"></div>
+
+                    <div class="grid grid-cols-3 gap-2 w-full h-full p-1 select-none z-10">
+                        <div></div>
+                        <button id="bt-up" class="dpad-btn group relative w-full h-full bg-marioRed rounded-t-full border-2 border-black flex flex-col items-center justify-center text-white hover:bg-red-800 transition shadow-[2px_2px_0px_#000]">
+                            <i class="fas fa-chevron-up text-base group-hover:-translate-y-0.5 transition-transform"></i>
+                            <span class="text-[7px] font-black tracking-widest mt-0.5 uppercase">MAJU</span>
+                        </button>
+                        <div></div>
+
+                        <button id="bt-left" class="dpad-btn group relative w-full h-full bg-marioRed rounded-l-full border-2 border-black flex flex-col items-center justify-center text-white hover:bg-red-800 transition shadow-[2px_2px_0px_#000]">
+                            <i class="fas fa-chevron-left text-base group-hover:-translate-x-0.5 transition-transform"></i>
+                            <span class="text-[7px] font-black tracking-widest mt-0.5 uppercase">KIRI</span>
+                        </button>
+
+                        <div class="flex items-center justify-center">
+                            <div class="w-12 h-12 rounded-full bg-marioRed border-3 border-black flex flex-col items-center justify-center shadow-[inset_0_0_8px_#000] relative">
+                                <span class="text-white text-base font-black font-arcade">M</span>
+                                <div id="status-dot" class="w-2 h-2 bg-red-950 rounded-full border border-black transition-all absolute bottom-1"></div>
+                            </div>
+                        </div>
+
+                        <button id="bt-right" class="dpad-btn group relative w-full h-full bg-marioRed rounded-r-full border-2 border-black flex flex-col items-center justify-center text-white hover:bg-red-800 transition shadow-[2px_2px_0px_#000]">
+                            <i class="fas fa-chevron-right text-base group-hover:translate-x-0.5 transition-transform"></i>
+                            <span class="text-[7px] font-black tracking-widest mt-0.5 uppercase">KANAN</span>
+                        </button>
+
+                        <div></div>
+                        <button id="bt-down" class="dpad-btn group relative w-full h-full bg-marioRed rounded-b-full border-2 border-black flex flex-col items-center justify-center text-white hover:bg-red-800 transition shadow-[2px_2px_0px_#000]">
+                            <span class="text-[7px] font-black tracking-widest mb-0.5 uppercase">MUNDUR</span>
+                            <i class="fas fa-chevron-down text-base group-hover:translate-y-0.5 transition-transform"></i>
+                        </button>
+                        <div></div>
+                    </div>
+                </div>
+
+                <div class="w-full flex justify-between items-center text-[8px] text-gray-300 font-sans font-bold border-t border-red-950 pt-2 mt-1">
+                    <span>BLE: <strong id="ble-status" class="text-marioRed">Terputus</strong></span>
+                    <span>Firebase: <strong id="fb-status" class="text-gray-400">Belum Konek</strong></span>
+                </div>
+            </section>
+
+            <section class="bg-marioCard/95 rounded-2xl p-4 lg:p-5 border-3 border-marioRed shadow-[5px_5px_0px_#000] flex flex-col items-center justify-between relative overflow-hidden backdrop-blur-md">
+                <div class="w-full flex justify-between items-center mb-2">
+                    <h2 class="text-[10px] font-bold text-white flex items-center gap-1.5 tracking-wide">
+                        <i class="fas fa-video text-marioRed"></i> AI Hand Gesture
+                    </h2>
+                    <button id="btn-toggle-cam" onclick="toggleCamera()" class="px-3 py-1.5 bg-marioRed hover:bg-red-800 text-white font-bold rounded-lg text-[8px] border border-black shadow-[2px_2px_0px_#000] transition active:scale-95 flex items-center gap-1.5">
+                        <i class="fas fa-power-off"></i>
+                        <span id="cam-btn-text">Kamera</span>
+                    </button>
+                </div>
+
+                <div class="relative w-full max-w-[200px] aspect-square rounded-xl overflow-hidden border-3 border-black shadow-[4px_4px_0px_#000] bg-black flex flex-col items-center justify-center my-2">
+                    <div id="webcam-container" class="w-full h-full flex items-center justify-center"></div>
+                    
+                    <div id="cam-placeholder" class="text-gray-400 flex flex-col items-center justify-center gap-2 font-sans p-2">
+                        <img src="lucky_2.png" alt="Lucky Box" class="w-14 h-14 animate-box-glow">
+                        <span class="text-[10px] font-bold text-marioRed tracking-wider">Kamera Standby</span>
+                    </div>
+                </div>
+
+                <div class="w-full border-t border-red-950 pt-2 mt-1">
+                    <div class="text-[8px] text-gray-400 mb-1.5 font-sans font-bold flex justify-between">
+                        <span>Akurasi Model:</span>
+                        <span>Aktif Auto</span>
+                    </div>
+                    <div id="label-container" class="grid grid-cols-2 gap-1.5 text-[8px] font-mono"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="w-full bg-marioRed/95 rounded-xl px-4 py-2.5 border-3 border-black shadow-[4px_4px_0px_#000] flex justify-between items-center relative z-20 backdrop-blur-md">
+            <span class="text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fas fa-star text-marioYellow animate-spin text-xs"></i> Perintah:
+            </span>
+            <div class="bg-black px-4 py-1 rounded-lg border border-white font-mono font-bold text-marioRed text-xs uppercase tracking-wider shadow-inner">
+                <span id="last-cmd">STOP</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MODAL FIREBASE -->
+    <div id="fb-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-4">
+        <div class="bg-marioCard border-3 border-marioRed rounded-2xl p-5 w-full max-w-sm shadow-[8px_8px_0px_#000] space-y-3 relative font-sans text-white">
+            <div class="flex justify-between items-center border-b border-red-950 pb-2">
+                <h3 class="text-[10px] font-bold text-marioRed flex items-center gap-1.5 font-arcade">
+                    <i class="fas fa-fire"></i> Firebase Config
+                </h3>
+                <button onclick="toggleModal(false)" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-2">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-300 mb-1">API Key</label>
+                    <input type="text" id="fb-api-key" placeholder="AIzaSy..." class="w-full bg-black border border-red-950 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-marioRed">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-300 mb-1">Database URL</label>
+                    <input type="text" id="fb-db-url" placeholder="https://your-app-default-rtdb.firebaseio.com" class="w-full bg-black border border-red-950 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-marioRed">
+                </div>
+            </div>
+
+            <div class="pt-1 flex justify-end gap-2 font-arcade">
+                <button onclick="toggleModal(false)" class="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[8px] rounded-lg border border-black transition">
+                    Batal
+                </button>
+                <button onclick="initFirebase()" class="px-3 py-1.5 bg-marioRed hover:bg-red-800 text-white font-bold text-[8px] rounded-lg border border-black shadow-[2px_2px_0px_#000] transition">
+                    Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+    function toggleModal(show) {
+        const modal = document.getElementById('fb-modal');
+        if (show) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        } else {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    // --- FIREBASE CONFIG ---
+    let dbRef = null;
+
+    function initFirebase() {
+        const apiKey = document.getElementById('fb-api-key').value.trim();
+        const databaseURL = document.getElementById('fb-db-url').value.trim();
+
+        if (!apiKey || !databaseURL) {
+            alert("Harap isi API Key dan Database URL Firebase!");
+            return;
+        }
+
+        try {
+            const firebaseConfig = { apiKey, databaseURL };
+
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            } else {
+                firebase.app().delete().then(() => {
+                    firebase.initializeApp(firebaseConfig);
+                });
+            }
+
+            dbRef = firebase.database().ref('robot_control');
+            document.getElementById('fb-status').innerText = "Terhubung";
+            document.getElementById('fb-status').className = "text-red-500 font-bold";
+            toggleModal(false);
+            alert("Berhasil terhubung ke Firebase!");
+        } catch(e) {
+            console.error("Firebase Init Error:", e);
+            document.getElementById('fb-status').innerText = "Gagal Konek";
+            document.getElementById('fb-status').className = "text-red-500 font-bold";
+            alert("Gagal konek Firebase. Periksa API Key / Database URL.");
+        }
+    }
+
+    function sendToFirebase(command, mode) {
+        if (dbRef) {
+            dbRef.set({
+                command: command,
+                mode: mode,
+                timestamp: Date.now()
+            }).catch(err => console.error("Firebase Sync Error:", err));
+        }
+    }
+
+    // --- GLOBALS ---
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/mZ_Qhc9ZT/";
+    let model, webcam, labelContainer, maxPredictions;
+    let bluetoothDevice, uartRxCharacteristic;
+    let currentCommand = "";
+    let isAiMode = false;
+    let isSendingBle = false;
+    let lastBleSendTime = 0;
+
+    const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+    // --- WEB BLUETOOTH FAST RESPONSE INTEGRATION ---
+    async function connectBluetooth() {
+        try {
+            bluetoothDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'BBC micro:bit' }],
+                optionalServices: [UART_SERVICE_UUID]
+            });
+
+            const server = await bluetoothDevice.gatt.connect();
+            const service = await server.getPrimaryService(UART_SERVICE_UUID);
+            
+            // Ambil RX Characteristic (6e400003) untuk mengirimkan data ke micro:bit
+            uartRxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+
+            document.getElementById('ble-status').innerText = "Terhubung";
+            document.getElementById('ble-status').className = "text-white font-bold";
+            document.getElementById('ble-btn-text').innerText = "Micro:bit OK";
+            document.getElementById('status-dot').className = "w-2 h-2 bg-red-500 rounded-full shadow-[0_0_10px_rgba(200,16,46,1)] animate-pulse absolute bottom-1";
+        } catch (error) {
+            console.error("Bluetooth Gagal:", error);
+            alert("Gagal terhubung ke micro:bit.");
+        }
+    }
+
+    async function sendToMicrobit(command) {
+        if (currentCommand === command) return;
+        
+        // Mencegah Overload Bluetooth (Throttle Minimal 100ms)
+        const now = Date.now();
+        if (now - lastBleSendTime < 100 && command !== 'stop') return;
+
+        currentCommand = command;
+        document.getElementById('last-cmd').innerText = command.toUpperCase();
+
+        sendToFirebase(command, isAiMode ? "AI_AUTOMATIC" : "MANUAL_JOYSTICK");
+
+        if (uartRxCharacteristic && !isSendingBle) {
+            isSendingBle = true;
+            lastBleSendTime = now;
+
+            try {
+                const encoder = new TextEncoder();
+                // Mengirimkan string ringkas + \n persis seperti cara fix_website
+                await uartRxCharacteristic.writeValue(encoder.encode(command + "\n"));
+            } catch (err) {
+                console.error("Bluetooth TX Error:", err);
+            } finally {
+                isSendingBle = false;
+            }
+        }
+    }
+
+    // --- D-PAD STEERING ANIMATION & LOGIC ---
+    function rotateSteeringWheel(direction) {
+        const wheel = document.getElementById('steering-wheel');
+        wheel.classList.remove('steer-left', 'steer-right', 'steer-up');
+        
+        if (direction === 'left') {
+            wheel.classList.add('steer-left');
+        } else if (direction === 'right') {
+            wheel.classList.add('steer-right');
+        } else if (direction === 'up') {
+            wheel.classList.add('steer-up');
+        }
+    }
+
+    function setupManualJoystick() {
+        const buttons = {
+            'bt-up': 'up',
+            'bt-down': 'down',
+            'bt-left': 'left',
+            'bt-right': 'right'
+        };
+
+        Object.keys(buttons).forEach(id => {
+            const btn = document.getElementById(id);
+            const cmd = buttons[id];
+
+            const startPress = (e) => {
+                e.preventDefault();
+                if (!isAiMode) {
+                    highlightButton(id);
+                    rotateSteeringWheel(cmd);
+                    sendToMicrobit(cmd);
+                }
+            };
+
+            const endPress = (e) => {
+                e.preventDefault();
+                if (!isAiMode) {
+                    resetButtons();
+                    rotateSteeringWheel('stop');
+                    sendToMicrobit("stop");
+                }
+            };
+
+            btn.addEventListener('mousedown', startPress);
+            btn.addEventListener('mouseup', endPress);
+            btn.addEventListener('mouseleave', endPress);
+            btn.addEventListener('touchstart', startPress);
+            btn.addEventListener('touchend', endPress);
+        });
+    }
+    setupManualJoystick();
+
+    // --- TEACHABLE MACHINE AI CAMERA ---
+    async function toggleCamera() {
+        if (!isAiMode) {
+            document.getElementById('cam-btn-text').innerText = "Loading...";
+            if (!model) {
+                const modelURL = MODEL_URL + "model.json";
+                const metadataURL = MODEL_URL + "metadata.json";
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+            }
+
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup();
+            await webcam.play();
+
+            document.getElementById('cam-placeholder').style.display = "none";
+            document.getElementById('webcam-container').appendChild(webcam.canvas);
+
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = "";
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+
+            isAiMode = true;
+            document.getElementById('cam-btn-text').innerText = "Matikan";
+            document.getElementById('btn-toggle-cam').classList.replace('bg-marioRed', 'bg-black');
+            document.getElementById('mode-badge').innerText = "Mode: AI Gesture";
+            document.getElementById('mode-badge').className = "px-3 py-1.5 rounded-lg bg-marioRed border border-black text-[8px] font-bold text-white tracking-wider uppercase shadow-[2px_2px_0px_#000]";
+
+            window.requestAnimationFrame(loop);
+        } else {
+            isAiMode = false;
+            if (webcam) webcam.stop();
+            document.getElementById('webcam-container').innerHTML = "";
+            document.getElementById('cam-placeholder').style.display = "flex";
+            document.getElementById('label-container').innerHTML = "";
+            
+            document.getElementById('cam-btn-text').innerText = "Kamera";
+            document.getElementById('btn-toggle-cam').classList.replace('bg-black', 'bg-marioRed');
+            document.getElementById('mode-badge').innerText = "Mode: Responsive Steering";
+            document.getElementById('mode-badge').className = "px-3 py-1.5 rounded-lg bg-black border border-marioRed text-[8px] font-bold text-white tracking-wider uppercase shadow-[2px_2px_0px_#000]";
+
+            resetButtons();
+            rotateSteeringWheel('stop');
+            sendToMicrobit("stop");
+        }
+    }
+
+    async function loop() {
+        if (!isAiMode) return;
+        webcam.update();
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        let highestProb = 0;
+        let bestClass = "stop";
+
+        for (let i = 0; i < maxPredictions; i++) {
+            const className = prediction[i].className;
+            const probability = prediction[i].probability;
+
+            labelContainer.childNodes[i].innerHTML = 
+                `<div class="bg-black/90 p-1 rounded border border-red-950 flex justify-between items-center font-sans">
+                    <span class="capitalize text-gray-200 text-[9px] font-bold">${className}</span>
+                    <span class="font-bold text-marioRed text-[9px]">${(probability * 100).toFixed(0)}%</span>
+                 </div>`;
+
+            if (probability > highestProb) {
+                highestProb = probability;
+                bestClass = className.toLowerCase();
+            }
+        }
+
+        if (highestProb < 0.65) bestClass = "stop";
+
+        if (bestClass.includes("atas") || bestClass.includes("up") || bestClass.includes("maju")) {
+            highlightButton('bt-up');
+            rotateSteeringWheel('up');
+            sendToMicrobit("up");
+        } else if (bestClass.includes("bawah") || bestClass.includes("down") || bestClass.includes("mundur")) {
+            highlightButton('bt-down');
+            rotateSteeringWheel('down');
+            sendToMicrobit("down");
+        } else if (bestClass.includes("kiri") || bestClass.includes("left")) {
+            highlightButton('bt-left');
+            rotateSteeringWheel('left');
+            sendToMicrobit("left");
+        } else if (bestClass.includes("kanan") || bestClass.includes("right")) {
+            highlightButton('bt-right');
+            rotateSteeringWheel('right');
+            sendToMicrobit("right");
+        } else {
+            resetButtons();
+            rotateSteeringWheel('stop');
+            sendToMicrobit("stop");
+        }
+    }
+
+    // --- UI HELPER ---
+    function highlightButton(buttonId) {
+        resetButtons();
+        const btn = document.getElementById(buttonId);
+        if (btn) btn.classList.add('active-btn');
+    }
+
+    function resetButtons() {
+        ['bt-up', 'bt-down', 'bt-left', 'bt-right'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove('active-btn');
+        });
+    }
+</script>
+</body>
+</html>
